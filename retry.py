@@ -37,6 +37,8 @@ class OperationFailedException(Exception):
 class Strategy(abc.ABC):
 
     def __init__(self, max_attempts=MAX_ATTEMPTS, jitter_spread=None):
+        if jitter_spread is None:
+          jitter_spread = 0
         self.max_attempts = max_attempts
         self.attempt = 0
         self.jitter = make_jitterer(jitter_spread)
@@ -61,8 +63,8 @@ class Backoff(Strategy):
     '''Implements an exponential backoff strategy'''
 
     def __init__(self,
-                 start_interval=1000,
-                 max_interval=60000,
+                 start_interval=1,
+                 max_interval=60,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -79,10 +81,10 @@ class Backoff(Strategy):
 class Linear(Strategy):
     def __init__(self, interval=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.interval_ms = interval_ms
+        self.interval = interval
 
     def next(self):
-        return self.interval_ms
+        return self.interval
 
 
 def retry(strategy=Linear, exception=Exception, *retry_args, **retry_kwargs):
@@ -94,6 +96,8 @@ def retry(strategy=Linear, exception=Exception, *retry_args, **retry_kwargs):
                 try:
                     func(*func_args, **func_kwargs)
                 except exception:
+                    print(f'Caught! Interval: {interval}')
+                    time.sleep(interval)
                     continue
                 else:
                     break
