@@ -34,11 +34,16 @@ def make_jitterer(spread=0.01, rng=random):
         return jitter
 
 
-class OperationFailedException(Exception):
+class OperationFailed(Exception):
     '''Thrown if all retries failed.
 
     Will carry a list of all the caught exceptions
     '''
+
+    def __init__(self, reasons=None, *args, **kwargs):
+        self.reasons = reasons
+        super().__init__(*args, **kwargs)
+
 
 class Strategy(abc.ABC):
 
@@ -48,6 +53,7 @@ class Strategy(abc.ABC):
         self.max_attempts = max_attempts
         self.attempt = 0
         self.jitter = make_jitterer(jitter_spread)
+        self.exceptions = []
 
     @abc.abstractmethod
     def next():
@@ -98,14 +104,18 @@ def retry(strategy=Linear, exception=Exception, *retry_args, **retry_kwargs):
         def func_wrapper(*func_args, **func_kwargs):
             strat = strategy(*retry_args, **retry_kwargs)
             exceptions = []
+            successful = False
             for interval in strat:
                 try:
                     func(*func_args, **func_kwargs)
                 except exception:
-                    print(f'Caught! Interval: {interval}')
+                    strat.exceptions.append(exception)
                     time.sleep(interval)
                     continue
                 else:
+                    successful = True
                     break
+            if not successful:
+                raise OperationFailed(reasons=strategy.exceptions)
         return func_wrapper
     return decorate
