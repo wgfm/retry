@@ -68,9 +68,9 @@ class Unrepairable(Exception):
 class Repairable(Exception):
     pass
 
-@retry(exception=Repairable):
+@retry(exception=Repairable)
 def error_prone():
-    raise Unrepairable() # Will now be caught by retry
+    raise Unrepairable() # Will not be caught by retry
 ```
 
 
